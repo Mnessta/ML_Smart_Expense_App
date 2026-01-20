@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/splash_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/reset_password_screen.dart';
 import 'auth_page.dart';
 
 class AppRoutes {
@@ -12,6 +13,7 @@ class AppRoutes {
   static const String login = '/login';
   static const String signup = '/signup';
   static const String home = '/home';
+  static const String resetPassword = '/reset-password';
 }
 
 GoRouter createRouter(GlobalKey<NavigatorState> key) {
@@ -26,7 +28,13 @@ GoRouter createRouter(GlobalKey<NavigatorState> key) {
       // Allow access to auth pages without authentication
       final bool isAuthPage = state.matchedLocation == AppRoutes.login || 
                               state.matchedLocation == AppRoutes.signup ||
-                              state.matchedLocation == AppRoutes.splash;
+                              state.matchedLocation == AppRoutes.splash ||
+                              state.matchedLocation == AppRoutes.resetPassword;
+      
+      // Don't redirect away from reset password page - allow recovery sessions
+      if (state.matchedLocation == AppRoutes.resetPassword) {
+        return null; // Allow access
+      }
       
       // If on auth page and already authenticated (not guest), go to home
       if (isAuthPage && isAuthenticated && !isGuestMode) {
@@ -134,6 +142,30 @@ GoRouter createRouter(GlobalKey<NavigatorState> key) {
             return ScaleTransition(scale: scale, child: FadeTransition(opacity: animation, child: child));
           },
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPassword,
+        pageBuilder: (BuildContext context, GoRouterState state) {
+          // Extract tokens and email from query parameters
+          final accessToken = state.uri.queryParameters['access_token'];
+          final refreshToken = state.uri.queryParameters['refresh_token'];
+          final email = state.uri.queryParameters['email'] ?? 
+                       (state.uri.queryParameters['type'] == 'recovery' 
+                       ? state.uri.queryParameters['email'] 
+                       : null);
+          
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: ResetPasswordScreen(
+              accessToken: accessToken,
+              refreshToken: refreshToken,
+              email: email,
+            ),
+            transitionsBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+          );
+        },
       ),
     ],
   );

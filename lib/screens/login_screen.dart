@@ -74,6 +74,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _loadSavedCredentials() async {
     try {
+      if (!mounted) return;
+      
       // Only load saved email if user was previously logged in (not guest mode)
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final bool isGuestMode = prefs.getBool('isGuestMode') ?? false;
@@ -81,17 +83,26 @@ class _LoginScreenState extends State<LoginScreen> {
       // Only load email if not in guest mode
       if (isGuestMode) return;
       
+      if (!mounted) return;
+      
       // Check for saved email from multiple sources
-      String? savedEmail = prefs.getString('saved_email') ?? 
-                          prefs.getString('userEmail') ?? 
-                          await AuthService().getSavedEmail();
+      String? savedEmail = prefs.getString('saved_email') ?? prefs.getString('userEmail');
+      
+      // Try to get from AuthService if not found
+      if (savedEmail == null || savedEmail.isEmpty) {
+        try {
+          savedEmail = await AuthService().getSavedEmail();
+        } catch (e) {
+          // Ignore errors
+        }
+      }
       
       if (savedEmail == null || savedEmail.isEmpty) return;
       if (!mounted) return;
       
       // Auto-fill email immediately
       setState(() {
-        _emailController.text = savedEmail;
+        _emailController.text = savedEmail!;
       });
       
       // Wait for Supabase session to restore
@@ -117,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     } catch (e) {
-      // Silently fail
+      // Silently fail - don't crash the app
     }
   }
 
@@ -142,23 +153,38 @@ class _LoginScreenState extends State<LoginScreen> {
     // If password was auto-filled with dots, check if user has active session
     if (_isPasswordAutoFilled && password.contains('•')) {
       // User has active session - try to use it directly
-      final session = Supabase.instance.client.auth.currentSession;
-      if (session != null) {
-        // Session exists, user is already logged in - just navigate
-        if (!context.mounted) return;
-        context.go(AppRoutes.home);
-        return;
-      } else {
-        // Session expired - clear auto-filled password
-        setState(() {
-          _passwordController.clear();
-          _isPasswordAutoFilled = false;
-          _passwordVisibilityEnabled = true;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Session expired. Please enter your password')),
-        );
-        return;
+      try {
+        final session = Supabase.instance.client.auth.currentSession;
+        if (session != null) {
+          // Session exists, user is already logged in - just navigate
+          if (!context.mounted) return;
+          context.go(AppRoutes.home);
+          return;
+        } else {
+          // Session expired - clear auto-filled password
+          if (mounted) {
+            setState(() {
+              _passwordController.clear();
+              _isPasswordAutoFilled = false;
+              _passwordVisibilityEnabled = true;
+            });
+          }
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Session expired. Please enter your password')),
+            );
+          }
+          return;
+        }
+      } catch (e) {
+        // If Supabase check fails, clear auto-filled password and continue
+        if (mounted) {
+          setState(() {
+            _passwordController.clear();
+            _isPasswordAutoFilled = false;
+            _passwordVisibilityEnabled = true;
+          });
+        }
       }
     }
 
@@ -234,19 +260,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
 
   Future<void> _forgot() async {
+    if (!mounted) return;
+    
     final String email = _emailController.text.trim();
     if (email.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Enter your email first')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your email first')),
+      );
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (mounted) {
+      setState(() => _isLoading = true);
+    }
+    
     try {
       await AuthService().sendPasswordReset(email);
-      if (!context.mounted) return;
-      // ignore: use_build_context_synchronously
+      if (!mounted) return;
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -255,6 +287,7 @@ class _LoginScreenState extends State<LoginScreen> {
           duration: Duration(seconds: 5),
         ),
       );
+      
       // Hide the forgot password link after sending
       if (mounted) {
         setState(() {
@@ -262,16 +295,27 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     } catch (e) {
-      if (!context.mounted) return;
-      // ignore: use_build_context_synchronously
+      if (!mounted) return;
+      
+      String errorMessage = 'Failed to send reset link';
+      if (e.toString().contains('user-not-found')) {
+        errorMessage = 'No account found with this email address.';
+      } else if (e.toString().contains('invalid-email')) {
+        errorMessage = 'Please enter a valid email address.';
+      } else {
+        errorMessage = 'Failed to send reset link: ${e.toString()}';
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to send reset link: ${e.toString()}'),
+          content: Text(errorMessage),
           duration: const Duration(seconds: 4),
         ),
       );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -354,6 +398,61 @@ class _LoginScreenState extends State<LoginScreen> {
                     ? null
                     : () => context.go(AppRoutes.signup),
                 child: const Text("Don't have an account? Sign up"),
+              ),
+              const SizedBox(height: 8),
+              // Forgot Password link - always visible
+              TextButton(
+                onPressed: _isLoading ? null : () async {
+                  if (!mounted) return;
+                  final String email = _emailController.text.trim();
+                  if (email.isEmpty) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please enter your email address first'),
+                      ),
+                    );
+                    return;
+                  }
+                  // Show dialog to confirm sending reset email
+                  if (!mounted) return;
+                  final bool? confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text('Reset Password'),
+                        content: Text(
+                          'We will send a password reset link to:\n\n$email\n\nDo you want to continue?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('Send Reset Link'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                  if (confirm == true && mounted) {
+                    await _forgot();
+                  }
+                },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  foregroundColor: Theme.of(context).colorScheme.primary,
+                ),
+                child: const Text(
+                  'Forgot Password?',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
               ),
               // Show forgot password link only when wrong password is entered
               if (_showForgotPassword) ...[

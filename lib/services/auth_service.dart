@@ -139,6 +139,13 @@ class AuthService {
     await _supabase.auth.resetPasswordForEmail(email);
   }
 
+  /// Update password from password reset token
+  /// This is called when user clicks the reset link from email
+  Future<void> updatePasswordFromReset(String newPassword) async {
+    final UserAttributes attributes = UserAttributes(password: newPassword);
+    await _supabase.auth.updateUser(attributes);
+  }
+
   Future<void> signInWithPhone(String phone) async {
     await _supabase.auth.signInWithOtp(phone: phone);
   }

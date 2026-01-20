@@ -137,23 +137,18 @@ class DbService {
     // Set user_id (null for guest mode, actual ID for logged-in users)
     expenseMap['user_id'] = finalUserId;
     
-    if (finalUserId != null) {
-      // Logged-in user - add sync fields
-      if (expenseMap['created_at'] == null) {
-        expenseMap['created_at'] = expense.date.toIso8601String();
-      }
-      if (expenseMap['updated_at'] == null) {
-        expenseMap['updated_at'] = DateTime.now().toIso8601String();
-      }
-      // Mark as unsynced if it's a new expense
-      if (expense.isSynced == false) {
-        expenseMap['isSynced'] = 0;
-      }
-    } else {
-      // Guest mode - mark as synced (won't sync to server)
-      expenseMap['isSynced'] = 1;
+    // Logged-in user - add sync fields
+    if (expenseMap['created_at'] == null) {
+      expenseMap['created_at'] = expense.date.toIso8601String();
     }
-    
+    if (expenseMap['updated_at'] == null) {
+      expenseMap['updated_at'] = DateTime.now().toIso8601String();
+    }
+    // Mark as unsynced if it's a new expense
+    if (expense.isSynced == false) {
+      expenseMap['isSynced'] = 0;
+    }
+      
     await db.insert('expenses', expenseMap, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
