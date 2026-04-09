@@ -89,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
       String? savedEmail = prefs.getString('saved_email') ?? prefs.getString('userEmail');
       
       // Try to get from AuthService if not found
-      if (savedEmail == null || savedEmail.isEmpty) {
+      if (savedEmail.isEmpty) {
         try {
           savedEmail = await AuthService().getSavedEmail();
         } catch (e) {

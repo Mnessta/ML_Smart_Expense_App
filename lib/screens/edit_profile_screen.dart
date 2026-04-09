@@ -81,7 +81,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
     
     // If no URL from Supabase, check SharedPreferences (fallback for both logged in and logged out)
-    if (imagePath?.isEmpty ?? true) {
+    if (imagePath.isEmpty ?? true) {
       final String? savedUrl = prefs.getString('profileImageUrl');
       if (savedUrl != null && savedUrl.isNotEmpty && 
           (savedUrl.startsWith('http://') || savedUrl.startsWith('https://'))) {
@@ -92,7 +92,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
     
     // Final fallback: check profileImagePath in SharedPreferences
-    if ((imagePath?.isEmpty ?? true) && 
+    if ((imagePath.isEmpty ?? true) && 
         (prefs.getString('profileImagePath') != null)) {
       final String? savedPath = prefs.getString('profileImagePath');
       if (savedPath != null && savedPath.isNotEmpty) {
