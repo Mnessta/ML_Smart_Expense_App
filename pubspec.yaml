@@ -14,18 +14,18 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  go_router: ^14.2.3
-  intl: ^0.19.0
+  go_router: ^16.1.0
+  intl: ^0.20.2
   shared_preferences: ^2.3.2
   provider: ^6.1.2
 
   # Charts & animations
-  fl_chart: ^0.69.0
+  fl_chart: ^0.71.0
   lottie: ^3.1.2
   google_fonts: ^6.2.1
 
   # Connectivity
-  connectivity_plus: ^6.1.0
+  connectivity_plus: ^7.1.0
   
   # Loading states
   shimmer: ^3.0.0
@@ -40,31 +40,31 @@ dependencies:
   uuid: ^4.5.1
   
   # Environment variables
-  flutter_dotenv: ^5.1.0
+  flutter_dotenv: ^6.0.0
 
   # Logging
   logger: ^2.4.0
   
   # Security
   local_auth: ^2.2.0
-  flutter_secure_storage: ^9.0.0
+  flutter_secure_storage: ^10.0.0
   
   # Image Picker
   image_picker: ^1.1.2
-  permission_handler: ^11.3.1
+  permission_handler: ^12.0.1
   
   # URL Launcher
   url_launcher: ^6.3.1
   
   # Font Awesome Icons
-  font_awesome_flutter: ^10.7.0
+  font_awesome_flutter: ^11.0.0
   
   # PDF Generation
   pdf: ^3.11.1
   printing: ^5.13.3
 
   # Notifications
-  flutter_local_notifications: ^17.2.3
+  flutter_local_notifications: ^19.5.0
 
 dev_dependencies:
   flutter_test:
@@ -75,7 +75,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.0
 

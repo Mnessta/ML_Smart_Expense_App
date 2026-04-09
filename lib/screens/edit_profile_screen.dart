@@ -35,7 +35,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.initState();
     _loadUserData();
   }
-  
+
   // Reload when screen appears (after navigating back from other screens)
   @override
   void didChangeDependencies() {
@@ -50,26 +50,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _loadUserData() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    
+
     // Prioritize SharedPreferences name (from signup) over Supabase
     final String? userName = prefs.getString('userName');
     final String? displayUsername = prefs.getString('displayUsername');
     final String? userEmail = prefs.getString('userEmail');
     String? imagePath = prefs.getString('profileImagePath');
     String? profileImageUrl;
-    
+
     // Also try to get from Supabase as fallback
     final String? supabaseName = AuthService().getCurrentUserName();
     final String? supabaseEmail = AuthService().getCurrentUserEmail();
-    
+
     // Get profile image URL from Supabase user metadata (if logged in)
     // This is the source of truth - it persists across logins
     if (AuthService().isLoggedIn) {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
         // Get from Supabase user metadata first (primary source)
-        profileImageUrl = ProfileImageService().getProfileImageUrlFromUser(user);
-        
+        profileImageUrl = ProfileImageService().getProfileImageUrlFromUser(
+          user,
+        );
+
         // Prioritize Supabase URL if it exists (this is the source of truth)
         if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
           // Store the URL in SharedPreferences for quick access
@@ -79,25 +81,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
       }
     }
-    
+
     // If no URL from Supabase, check SharedPreferences (fallback for both logged in and logged out)
-    if (imagePath.isEmpty ?? true) {
+    if ((imagePath ?? '').isEmpty) {
       final String? savedUrl = prefs.getString('profileImageUrl');
-      if (savedUrl != null && savedUrl.isNotEmpty && 
+      if (savedUrl != null &&
+          savedUrl.isNotEmpty &&
           (savedUrl.startsWith('http://') || savedUrl.startsWith('https://'))) {
         // Use the saved URL from SharedPreferences
         imagePath = savedUrl;
         await prefs.setString('profileImagePath', savedUrl);
       }
     }
-    
+
     // Final fallback: check profileImagePath in SharedPreferences
-    if ((imagePath.isEmpty ?? true) && 
+    if ((imagePath?.isEmpty ?? true) &&
         (prefs.getString('profileImagePath') != null)) {
       final String? savedPath = prefs.getString('profileImagePath');
       if (savedPath != null && savedPath.isNotEmpty) {
         // Check if it's a URL
-        if (savedPath.startsWith('http://') || savedPath.startsWith('https://')) {
+        if (savedPath.startsWith('http://') ||
+            savedPath.startsWith('https://')) {
           imagePath = savedPath;
           await prefs.setString('profileImageUrl', savedPath);
         } else {
@@ -106,7 +110,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
       }
     }
-    
+
     setState(() {
       // Prioritize SharedPreferences name (from signup) - this is the name entered during signup
       _initialName = userName ?? supabaseName ?? '';
@@ -133,11 +137,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final String newUsername = _usernameController.text.trim();
       final String newEmail = _emailController.text.trim();
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      
+
       // Update name in SharedPreferences
       if (newName.isNotEmpty && newName != _initialName) {
         await prefs.setString('userName', newName);
-        
+
         // Update in Supabase if logged in
         if (AuthService().isLoggedIn) {
           try {
@@ -147,7 +151,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           }
         }
       }
-      
+
       // Update username in SharedPreferences (used for greetings)
       if (newUsername.isNotEmpty && newUsername != _initialUsername) {
         await prefs.setString('displayUsername', newUsername);
@@ -155,11 +159,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         // If username is cleared, remove it from preferences
         await prefs.remove('displayUsername');
       }
-      
-      
+
       // Update email in Supabase if changed and user is logged in
-      if (newEmail.isNotEmpty && 
-          newEmail != _initialEmail && 
+      if (newEmail.isNotEmpty &&
+          newEmail != _initialEmail &&
           AuthService().isLoggedIn) {
         try {
           await AuthService().updateProfile(email: newEmail);
@@ -177,12 +180,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           }
         }
       }
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
-        
+
         ErrorHandler.showSuccess(context, 'Profile updated successfully');
         Navigator.of(context).pop(true);
       }
@@ -204,7 +207,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   /// Returns FileImage for local files, NetworkImage for URLs, or null
   ImageProvider? _getProfileImageProvider() {
     if (_profileImagePath != null && _profileImagePath!.isNotEmpty) {
-      if (_profileImagePath!.startsWith('http://') || _profileImagePath!.startsWith('https://')) {
+      if (_profileImagePath!.startsWith('http://') ||
+          _profileImagePath!.startsWith('https://')) {
         // URL from Supabase
         return NetworkImage(_profileImagePath!);
       } else {
@@ -291,7 +295,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ErrorHandler.handleError(
         context,
         e,
-        customMessage: 'Failed to change password. Please check your current password and try again.',
+        customMessage:
+            'Failed to change password. Please check your current password and try again.',
       );
     } finally {
       if (mounted) {
@@ -320,10 +325,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           else
             TextButton(
               onPressed: _saveProfile,
-              child: const Text(
-                'Save',
-                style: TextStyle(fontSize: 16),
-              ),
+              child: const Text('Save', style: TextStyle(fontSize: 16)),
             ),
         ],
       ),
@@ -353,7 +355,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // Name Field
             TextFormField(
               controller: _nameController,
@@ -378,7 +380,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               },
             ),
             const SizedBox(height: 16),
-            
+
             // Username Field (for greetings)
             TextFormField(
               controller: _usernameController,
@@ -387,18 +389,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 hintText: 'Enter your preferred name (for greetings)',
                 prefixIcon: Icon(Icons.alternate_email),
                 border: OutlineInputBorder(),
-                helperText: 'This name will be used in greetings. Leave empty to use your first name.',
+                helperText:
+                    'This name will be used in greetings. Leave empty to use your first name.',
               ),
               textCapitalization: TextCapitalization.words,
               validator: (value) {
-                if (value != null && value.trim().isNotEmpty && value.trim().length < 2) {
+                if (value != null &&
+                    value.trim().isNotEmpty &&
+                    value.trim().length < 2) {
                   return 'Username must be at least 2 characters';
                 }
                 return null;
               },
             ),
             const SizedBox(height: 16),
-            
+
             // Email Field
             TextFormField(
               controller: _emailController,
@@ -424,10 +429,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 8),
               Text(
                 'Email can only be changed when logged in',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
             ],
             const SizedBox(height: 24),
@@ -443,10 +445,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     Expanded(
                       child: Text(
                         'Changing your email will require verification. Make sure you have access to the new email address.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.blue[900],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.blue[900]),
                       ),
                     ),
                   ],
@@ -459,9 +458,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             if (AuthService().isLoggedIn) ...[
               Text(
                 'Change Password',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Card(
@@ -528,7 +527,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: _isChangingPassword ? null : _changePassword,
+                          onPressed: _isChangingPassword
+                              ? null
+                              : _changePassword,
                           child: _isChangingPassword
                               ? const SizedBox(
                                   width: 20,
@@ -549,10 +550,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 8),
               Text(
                 'Log in to change your password.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
             ],
           ],
@@ -561,4 +559,3 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 }
-
