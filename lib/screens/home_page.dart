@@ -870,7 +870,7 @@ class _HomePageState extends State<HomePage> {
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: transactions.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        separatorBuilder: (_, _) => const SizedBox(width: 12),
                         itemBuilder: (context, index) {
                           final tx = transactions[index];
                           final icon = getCategoryIcon(tx["category"] as String);
@@ -928,7 +928,7 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                   ),
                                 Consumer<CurrencyProvider>(
-                                  builder: (_, currencyProvider, __) {
+                                  builder: (_, currencyProvider, _) {
                                     return Text(
                                       "- ${currencyProvider.formatAmount(amount)}",
                                       style: const TextStyle(
@@ -1060,7 +1060,7 @@ class _HomePageState extends State<HomePage> {
                                   ],
                                 )
                               : Consumer<CurrencyProvider>(
-                                  builder: (_, currencyProvider, __) {
+                                  builder: (_, currencyProvider, _) {
                                     final double amount = (t["amount"] as num).toDouble();
                                     final String formattedAmount =
                                         currencyProvider.formatAmount(amount.abs());

@@ -9,32 +9,20 @@ import 'services/auth_service.dart';
 import 'widgets/password_strength_indicator.dart';
 import 'widgets/glow_snake_border.dart';
 
-
-
 class AuthPage extends StatefulWidget {
-
   const AuthPage({super.key});
 
-
-
   @override
-
   State<AuthPage> createState() => _AuthPageState();
-
 }
 
-
-
 class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
-
   late final AnimationController _entryController;
 
   late final Animation<double> _scaleAnim;
 
   late final Animation<double> _fadeAnim;
   late final AnimationController _buttonPulseController;
-
-
 
   // Always in login mode - signup is accessed through separate route
   final bool _isLogin = true;
@@ -53,45 +41,23 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
 
   final _nameCtrl = TextEditingController();
 
-
-
   @override
-
   void initState() {
-
     super.initState();
 
-
-
     _entryController = AnimationController(
-
       vsync: this,
 
       duration: const Duration(milliseconds: 900),
-
     );
 
-
-
     _scaleAnim = CurvedAnimation(
-
       parent: _entryController,
 
       curve: Curves.easeOutBack,
-
     );
 
-
-
-    _fadeAnim = CurvedAnimation(
-
-      parent: _entryController,
-
-      curve: Curves.easeIn,
-
-    );
-
-
+    _fadeAnim = CurvedAnimation(parent: _entryController, curve: Curves.easeIn);
 
     _entryController.forward();
     _buttonPulseController = AnimationController(
@@ -108,31 +74,30 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
 
     // Load saved credentials for auto-fill
     _loadSavedCredentials();
-
   }
-  
+
   /// Load saved email and auto-fill password if session exists
   Future<void> _loadSavedCredentials() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final bool isGuestMode = prefs.getBool('isGuestMode') ?? false;
       final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-      
+
       if (isGuestMode) return;
-      
+
       final String? savedEmail = await AuthService().getSavedEmail();
       if (savedEmail != null && savedEmail.isNotEmpty && mounted) {
         setState(() {
           _emailCtrl.text = savedEmail;
         });
-        
+
         // Wait a bit for Supabase session to restore
         await Future.delayed(const Duration(milliseconds: 300));
-        
+
         // Check if user is marked as logged in or has an active Supabase session
         final session = Supabase.instance.client.auth.currentSession;
         final user = Supabase.instance.client.auth.currentUser;
-        
+
         if ((isLoggedIn || session != null || user != null) && mounted) {
           // User has an active session - auto-fill password with masked dots
           setState(() {
@@ -148,9 +113,7 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
   }
 
   @override
-
   void dispose() {
-
     _entryController.dispose();
     _buttonPulseController.dispose();
 
@@ -161,16 +124,9 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
     _nameCtrl.dispose();
 
     super.dispose();
-
   }
 
-
-
-
-
-
   Future<void> _onSubmit() async {
-
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
@@ -178,51 +134,53 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
     try {
       final String email = _emailCtrl.text.trim();
       final String password = _passCtrl.text.trim();
-      
+
       if (_isLogin) {
         // Login existing user
         await AuthService().signInWithEmail(email, password);
-        
+
         // Clear guest mode flag when user authenticates
         final SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isGuestMode', false);
-        
+
         if (!mounted) return;
-        
+
         setState(() => _loading = false);
         // ignore: use_build_context_synchronously
         context.go(AppRoutes.home);
       } else {
         // Sign up new user
         await AuthService().signUpWithEmail(email, password);
-        
+
         // Store name if provided
         if (_nameCtrl.text.isNotEmpty) {
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString('userName', _nameCtrl.text.trim());
         }
-        
+
         // Check if user needs to confirm email
         final SharedPreferences prefs = await SharedPreferences.getInstance();
         final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-        
+
         if (!mounted) return;
-        
+
         setState(() => _loading = false);
-        
+
         if (!isLoggedIn) {
           // Email confirmation required
           // ignore: use_build_context_synchronously
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Account created! Please check your email to confirm your account before signing in.'),
+              content: Text(
+                'Account created! Please check your email to confirm your account before signing in.',
+              ),
               duration: Duration(seconds: 6),
             ),
           );
           // Stay on auth page for user to sign in after confirming email
           return;
         }
-        
+
         // User is fully signed up and logged in
         await prefs.setBool('isGuestMode', false);
         // ignore: use_build_context_synchronously
@@ -230,86 +188,130 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
       }
     } catch (e) {
       if (!mounted) return;
-      
+
       setState(() => _loading = false);
-      
+
       String errorMessage = _getErrorMessage(e, _isLogin);
-      
+
       // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMessage),
           duration: const Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'OK',
-            onPressed: () {},
-          ),
+          action: SnackBarAction(label: 'OK', onPressed: () {}),
         ),
       );
     }
-
   }
 
+  Future<void> _sendPasswordReset() async {
+    final String email = _emailCtrl.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your email address first.')),
+      );
+      return;
+    }
 
+    setState(() => _loading = true);
+    try {
+      await AuthService().sendPasswordReset(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Password reset link sent to $email. Open the email and use the link to set a new password.',
+          ),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not send reset email: ${e.toString()}'),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   String _getErrorMessage(dynamic error, bool isLogin) {
     final String errorString = error.toString().toLowerCase();
-    
+
     // Check for Supabase AuthApiException
-    if (errorString.contains('authapiexception') || errorString.contains('auth_api_exception')) {
+    if (errorString.contains('authapiexception') ||
+        errorString.contains('auth_api_exception')) {
       // Extract the actual error message from Supabase
-      if (errorString.contains('email already registered') || errorString.contains('email-already-in-use') || errorString.contains('user already registered')) {
+      if (errorString.contains('email already registered') ||
+          errorString.contains('email-already-in-use') ||
+          errorString.contains('user already registered')) {
         return 'This email is already registered. Please sign in instead.';
       }
-      if (errorString.contains('invalid email') || errorString.contains('invalid-email')) {
+      if (errorString.contains('invalid email') ||
+          errorString.contains('invalid-email')) {
         return 'Please enter a valid email address.';
       }
-      if (errorString.contains('password') && (errorString.contains('weak') || errorString.contains('too short'))) {
+      if (errorString.contains('password') &&
+          (errorString.contains('weak') || errorString.contains('too short'))) {
         return 'Password is too weak. Please ensure it meets all requirements shown below.';
       }
-      if (errorString.contains('user not found') || errorString.contains('user-not-found')) {
-        return isLogin 
+      if (errorString.contains('user not found') ||
+          errorString.contains('user-not-found')) {
+        return isLogin
             ? 'No account found with this email. Please sign up first.'
             : 'Signup failed. Please try again.';
       }
-      if (errorString.contains('wrong password') || errorString.contains('wrong-password') || errorString.contains('invalid login')) {
+      if (errorString.contains('wrong password') ||
+          errorString.contains('wrong-password') ||
+          errorString.contains('invalid login')) {
         return 'Incorrect password. Please try again.';
       }
-      if (errorString.contains('network') || errorString.contains('connection')) {
+      if (errorString.contains('network') ||
+          errorString.contains('connection')) {
         return 'Network error. Please check your internet connection and try again.';
       }
       if (errorString.contains('timeout')) {
         return 'Request timed out. Please check your connection and try again.';
       }
       // Try to extract the actual error message
-      final match = RegExp(r'message[:\s]+([^,}]+)', caseSensitive: false).firstMatch(errorString);
+      final match = RegExp(
+        r'message[:\s]+([^,}]+)',
+        caseSensitive: false,
+      ).firstMatch(errorString);
       if (match != null) {
         return match.group(1)?.trim() ?? 'Signup failed. Please try again.';
       }
     }
-    
+
     // Generic error patterns
-    if (errorString.contains('email-already-in-use') || errorString.contains('email already registered')) {
+    if (errorString.contains('email-already-in-use') ||
+        errorString.contains('email already registered')) {
       return 'This email is already registered. Please sign in instead.';
     }
-    if (errorString.contains('invalid-email') || errorString.contains('invalid email')) {
+    if (errorString.contains('invalid-email') ||
+        errorString.contains('invalid email')) {
       return 'Please enter a valid email address.';
     }
-    if (errorString.contains('weak-password') || (errorString.contains('password') && errorString.contains('weak'))) {
+    if (errorString.contains('weak-password') ||
+        (errorString.contains('password') && errorString.contains('weak'))) {
       return 'Password is too weak. Please ensure it meets all requirements shown below.';
     }
     if (errorString.contains('user-not-found')) {
-      return isLogin 
+      return isLogin
           ? 'No account found with this email. Please sign up first.'
           : 'Signup failed. Please try again.';
     }
-    if (errorString.contains('wrong-password') || errorString.contains('invalid login')) {
+    if (errorString.contains('wrong-password') ||
+        errorString.contains('invalid login')) {
       return 'Incorrect password. Please try again.';
     }
     if (errorString.contains('network') || errorString.contains('connection')) {
       return 'Network error. Please check your internet connection and try again.';
     }
-    
+
     // Show the actual error for debugging (in development)
     // In production, you might want to log this and show a generic message
     return isLogin
@@ -323,38 +325,25 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
     await prefs.setBool('isLoggedIn', false);
     await prefs.remove('userEmail');
     await prefs.remove('authProvider');
-    
+
     if (mounted) {
       context.go(AppRoutes.home);
     }
   }
 
-
-
-
   Widget _buildBackground() {
-
     return Container(
-
       decoration: const BoxDecoration(
-
         gradient: LinearGradient(
-
           colors: [Color(0xFF081229), Color(0xFF0A4B8C)],
 
           begin: Alignment.topLeft,
 
           end: Alignment.bottomRight,
-
         ),
-
       ),
-
     );
-
   }
-
-
 
   Widget _buildLogo() {
     return FadeTransition(
@@ -386,32 +375,32 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                 enableRotation: true, // Slow rotation
                 enablePulse: true, // Pulse effect
                 child: Container(
-                width: 130,
-                height: 130,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  // Removed white border - only snake border will be visible
-                  boxShadow: const [
-                    BoxShadow(
-                      blurRadius: 15,
-                      spreadRadius: 2,
-                      color: Colors.black26,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Transform.scale(
-                    scale: 1.3,
-                    child: Image.asset(
-                      'assets/icon/ml251106_141948_0000.png',
-                      fit: BoxFit.contain,
+                  width: 130,
+                  height: 130,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    // Removed white border - only snake border will be visible
+                    boxShadow: const [
+                      BoxShadow(
+                        blurRadius: 15,
+                        spreadRadius: 2,
+                        color: Colors.black26,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Transform.scale(
+                      scale: 1.3,
+                      child: Image.asset(
+                        'assets/icon/ml251106_141948_0000.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 ),
-              ),
               ),
             ),
             const SizedBox(height: 12),
@@ -431,24 +420,18 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
     );
   }
 
-
-
   Widget _buildCard(bool login) {
-
     final bool isLogin = login;
 
     final String title = isLogin ? "Welcome Back" : "Create Account";
 
-    final String subtitle =
-
-        isLogin ? "Login to continue" : "Sign up to track expenses";
+    final String subtitle = isLogin
+        ? "Login to continue"
+        : "Sign up to track expenses";
 
     final String actionLabel = isLogin ? "Login" : "Sign Up";
 
-
-
     return AnimatedContainer(
-
       duration: const Duration(milliseconds: 400),
 
       curve: Curves.easeInOut,
@@ -458,93 +441,78 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
 
       decoration: BoxDecoration(
-
         color: Colors.white,
 
         borderRadius: BorderRadius.circular(20),
 
         boxShadow: const [
-
           BoxShadow(
-
             blurRadius: 25,
 
             color: Colors.black26,
 
             offset: Offset(0, 12),
-
           ),
-
         ],
-
       ),
 
       child: Form(
-
         key: _formKey,
 
         child: Column(
-
           mainAxisSize: MainAxisSize.min,
 
           children: [
+            Text(
+              title,
 
-            Text(title,
-
-                style: const TextStyle(
-                    fontFamily: 'Times New Roman',
-                    fontSize: 22, 
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87)),
+              style: const TextStyle(
+                fontFamily: 'Times New Roman',
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
 
             const SizedBox(height: 6),
 
-            Text(subtitle,
+            Text(
+              subtitle,
 
-                style: const TextStyle(
-                    fontFamily: 'Times New Roman',
-                    fontSize: 13, 
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87)),
+              style: const TextStyle(
+                fontFamily: 'Times New Roman',
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
 
             const SizedBox(height: 18),
 
-
-
             if (!isLogin)
-
               TextFormField(
-
                 controller: _nameCtrl,
 
                 decoration: const InputDecoration(labelText: "Full Name"),
 
                 validator: (v) =>
-
                     v == null || v.trim().length < 2 ? "Enter your name" : null,
-
               ),
 
             if (!isLogin) const SizedBox(height: 12),
 
-
-
             TextFormField(
-
               controller: _emailCtrl,
 
               decoration: const InputDecoration(labelText: "Email"),
 
               validator: (v) =>
-
                   v != null && v.contains("@") ? null : "Enter a valid email",
-
             ),
 
             const SizedBox(height: 12),
 
             TextFormField(
-
               controller: _passCtrl,
 
               decoration: InputDecoration(
@@ -578,15 +546,19 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                   final hasUpperCase = v.contains(RegExp(r'[A-Z]'));
                   final hasLowerCase = v.contains(RegExp(r'[a-z]'));
                   final hasDigits = v.contains(RegExp(r'[0-9]'));
-                  final hasSpecialChar = v.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=~`\[\]\\/]'));
-                  
-                  if (!hasUpperCase || !hasLowerCase || !hasDigits || !hasSpecialChar) {
+                  final hasSpecialChar = v.contains(
+                    RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=~`\[\]\\/]'),
+                  );
+
+                  if (!hasUpperCase ||
+                      !hasLowerCase ||
+                      !hasDigits ||
+                      !hasSpecialChar) {
                     return "Password must meet all requirements";
                   }
                   return null;
                 }
               },
-
             ),
 
             // Show password strength indicator only during signup
@@ -598,23 +570,27 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
 
             const SizedBox(height: 18),
 
-
-
             _loading
                 ? const CircularProgressIndicator()
                 : AnimatedBuilder(
                     animation: _buttonPulseController,
                     builder: (context, child) {
-                      final double pulseScale = 1 + (_buttonPulseController.value * 0.04);
-                      final double glowOpacity = 0.35 + (_buttonPulseController.value * 0.4);
+                      final double pulseScale =
+                          1 + (_buttonPulseController.value * 0.04);
+                      final double glowOpacity =
+                          0.35 + (_buttonPulseController.value * 0.4);
                       return Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF0A6BFF).withValues(alpha: glowOpacity),
-                              blurRadius: 24 + (_buttonPulseController.value * 12),
-                              spreadRadius: 1 + (_buttonPulseController.value * 3),
+                              color: const Color(
+                                0xFF0A6BFF,
+                              ).withValues(alpha: glowOpacity),
+                              blurRadius:
+                                  24 + (_buttonPulseController.value * 12),
+                              spreadRadius:
+                                  1 + (_buttonPulseController.value * 3),
                               offset: const Offset(0, 6),
                             ),
                           ],
@@ -648,68 +624,79 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
             const SizedBox(height: 12),
 
             TextButton(
-
               onPressed: _loading ? null : () => context.go(AppRoutes.signup),
 
               child: const Text("Don't have an account? Sign up"),
+            ),
 
+            TextButton(
+              onPressed: _loading
+                  ? null
+                  : () async {
+                      final String email = _emailCtrl.text.trim();
+                      final bool? confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Reset Password'),
+                            content: Text(
+                              email.isEmpty
+                                  ? 'Enter your registered email, then tap Forgot Password again to receive a reset link.'
+                                  : 'Send a password reset link to:\n\n$email',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(true),
+                                child: const Text('Send Link'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                      if (confirm == true && mounted) {
+                        await _sendPasswordReset();
+                      }
+                    },
+              child: const Text('Forgot Password?'),
             ),
 
             const SizedBox(height: 12),
 
             TextButton.icon(
-
               onPressed: _continueAsGuest,
 
               icon: const Icon(Icons.person_outline),
 
               label: const Text("Continue as Guest"),
-
             ),
-
           ],
-
         ),
-
       ),
-
     );
-
   }
 
-
-
-
-
-
   @override
-
   Widget build(BuildContext context) {
-
     return Scaffold(
-
       backgroundColor: Colors.transparent,
 
       body: Stack(
-
         children: [
-
           _buildBackground(),
 
           SafeArea(
-
             child: Center(
-
               child: SingleChildScrollView(
-
                 padding: const EdgeInsets.symmetric(vertical: 36),
 
                 child: Column(
-
                   mainAxisAlignment: MainAxisAlignment.center,
 
                   children: [
-
                     _buildLogo(),
 
                     const SizedBox(height: 28),
@@ -719,33 +706,22 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                     const SizedBox(height: 22),
 
                     const Text(
-
                       "By continuing, you agree to our Terms & Privacy",
 
                       style: TextStyle(color: Colors.white70, fontSize: 12),
-
                     ),
 
                     const SizedBox(height: 16),
 
                     _buildSocialMediaIcons(),
-
                   ],
-
                 ),
-
               ),
-
             ),
-
           ),
-
         ],
-
       ),
-
     );
-
   }
 
   Future<void> _launchURL(String url) async {
@@ -755,16 +731,16 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not launch URL')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Could not launch URL')));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
       }
     }
   }
@@ -810,9 +786,9 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
       ],
     );
   }
-  
+
   Widget _buildSnakeIconButton({
-    required IconData icon,
+    required FaIconData icon,
     required Color color,
     required String tooltip,
     required VoidCallback onTap,

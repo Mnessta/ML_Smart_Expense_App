@@ -69,11 +69,19 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  final GlobalKey<NavigatorState> _rootKey = GlobalKey<NavigatorState>();
+  late final GoRouter _router = createRouter(_rootKey);
+
   @override
   void initState() {
     super.initState();
     // Listen to auth state changes and start/stop sync service
     Supabase.instance.client.auth.onAuthStateChange.listen((event) async {
+      if (event.event == AuthChangeEvent.passwordRecovery) {
+        _router.go(AppRoutes.resetPassword);
+        return;
+      }
+
       if (event.session != null) {
         // User logged in - clear guest mode data and save preferences
         final user = Supabase.instance.client.auth.currentUser;
@@ -161,9 +169,6 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    final GlobalKey<NavigatorState> rootKey = GlobalKey<NavigatorState>();
-    final GoRouter router = createRouter(rootKey);
-
     return MultiProvider(
       providers: <ChangeNotifierProvider<dynamic>>[
         ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
@@ -182,12 +187,12 @@ class _MyAppState extends State<MyApp> {
             (BuildContext context, ThemeProvider themeProvider, Widget? child) {
               return AppLockWrapper(
                 child: MaterialApp.router(
-                  key: rootKey,
+                  key: _rootKey,
                   title: 'ML Smart Expense',
                   theme: AppTheme.light(themeProvider.accentColor),
                   darkTheme: AppTheme.dark(themeProvider.accentColor),
                   themeMode: themeProvider.themeMode,
-                  routerConfig: router,
+                  routerConfig: _router,
                 ),
               );
             },

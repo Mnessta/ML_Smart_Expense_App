@@ -12,9 +12,7 @@ class AuthService {
 
   final SupabaseClient _supabase = Supabase.instance.client;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
+    aOptions: AndroidOptions(),
     iOptions: IOSOptions(
       accessibility: KeychainAccessibility.first_unlock_this_device,
     ),
@@ -136,7 +134,10 @@ class AuthService {
   }
 
   Future<void> sendPasswordReset(String email) async {
-    await _supabase.auth.resetPasswordForEmail(email);
+    await _supabase.auth.resetPasswordForEmail(
+      email,
+      redirectTo: 'mlsmartexpense://reset-password',
+    );
   }
 
   /// Update password from password reset token
