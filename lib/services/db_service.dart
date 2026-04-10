@@ -1,7 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/expense_model.dart';
 import '../models/budget_model.dart';
 import '../services/auth_service.dart';
@@ -125,12 +124,12 @@ class DbService {
     if (finalUserId == null) {
       // Auto-detect user_id from current context
       if (AuthService().isLoggedIn) {
-        finalUserId = Supabase.instance.client.auth.currentUser?.id;
+        finalUserId = AuthService().currentUserId;
       } else {
         // Guest mode - explicitly set to null
         final SharedPreferences prefs = await SharedPreferences.getInstance();
         final bool isGuestMode = prefs.getBool('isGuestMode') ?? false;
-        finalUserId = isGuestMode ? null : Supabase.instance.client.auth.currentUser?.id;
+        finalUserId = isGuestMode ? null : AuthService().currentUserId;
       }
     }
     
@@ -155,12 +154,12 @@ class DbService {
   /// Get the current user ID for filtering (null for guest mode)
   Future<String?> _getCurrentUserId() async {
     if (AuthService().isLoggedIn) {
-      return Supabase.instance.client.auth.currentUser?.id;
+      return AuthService().currentUserId;
     }
     // For guest mode, return null - guest expenses have user_id = null
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final bool isGuestMode = prefs.getBool('isGuestMode') ?? false;
-    return isGuestMode ? null : Supabase.instance.client.auth.currentUser?.id;
+    return isGuestMode ? null : AuthService().currentUserId;
   }
 
   Future<List<ExpenseModel>> getExpenses({String? category, int? fromMs, int? toMs}) async {

@@ -3,13 +3,21 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'db_service.dart';
 import '../utils/logger.dart';
+import '../utils/supabase_guard.dart';
 
 class SyncService {
-  final SupabaseClient supabase = Supabase.instance.client;
   StreamSubscription? _connSub;
   bool _isSyncing = false;
 
+  SupabaseClient? get _supabase {
+    if (!isSupabaseInitialized()) return null;
+    return Supabase.instance.client;
+  }
+
   void start() {
+    final supabase = _supabase;
+    if (supabase == null) return;
+
     // Listen to connectivity changes
     _connSub = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
       if (results.any((result) => result != ConnectivityResult.none)) {
@@ -51,6 +59,9 @@ class SyncService {
   }
 
   Future<void> _syncToServer() async {
+    final supabase = _supabase;
+    if (supabase == null) return;
+
     if (_isSyncing) return;
     _isSyncing = true;
 
@@ -94,6 +105,9 @@ class SyncService {
   }
 
   Future<void> _pullFromServer() async {
+    final supabase = _supabase;
+    if (supabase == null) return;
+
     if (_isSyncing) return;
     _isSyncing = true;
 
@@ -122,6 +136,9 @@ class SyncService {
 
   Future<void> _handleServerInsert(Map<String, dynamic> newRow) async {
     try {
+      final supabase = _supabase;
+      if (supabase == null) return;
+
       final user = supabase.auth.currentUser;
       
       // Only handle if it's for the current user
@@ -136,6 +153,9 @@ class SyncService {
 
   Future<void> _handleServerUpdate(Map<String, dynamic> updatedRow) async {
     try {
+      final supabase = _supabase;
+      if (supabase == null) return;
+
       final user = supabase.auth.currentUser;
       
       if (user == null || updatedRow['user_id'] != user.id) return;
@@ -149,6 +169,9 @@ class SyncService {
 
   Future<void> _handleServerDelete(Map<String, dynamic> deletedRow) async {
     try {
+      final supabase = _supabase;
+      if (supabase == null) return;
+
       final user = supabase.auth.currentUser;
       
       if (user == null || deletedRow['user_id'] != user.id) return;
@@ -175,6 +198,9 @@ class SyncService {
   /// Accepts either ExpenseModel or `Map<String, dynamic>`
   Future<void> syncExpense(dynamic expense) async {
     try {
+      final supabase = _supabase;
+      if (supabase == null) return;
+
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
@@ -243,6 +269,9 @@ class SyncService {
   /// Accepts either BudgetModel or `Map<String, dynamic>`
   Future<void> syncBudget(dynamic budget) async {
     try {
+      final supabase = _supabase;
+      if (supabase == null) return;
+
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
@@ -285,6 +314,9 @@ class SyncService {
   /// Delete expense from server
   Future<void> deleteExpenseFromServer(String expenseId, {String? remoteId}) async {
     try {
+      final supabase = _supabase;
+      if (supabase == null) return;
+
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
@@ -316,6 +348,6 @@ class SyncService {
 
   void dispose() {
     _connSub?.cancel();
-    supabase.removeAllChannels();
+    _supabase?.removeAllChannels();
   }
 }

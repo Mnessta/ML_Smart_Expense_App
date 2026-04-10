@@ -16,8 +16,7 @@ import 'services/db_service.dart';
 import 'widgets/app_lock_wrapper.dart';
 import 'config/supabase_config.dart';
 import 'services/local_notification_service.dart';
-
-final SyncService syncService = SyncService();
+import 'utils/supabase_guard.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,10 +70,16 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final GlobalKey<NavigatorState> _rootKey = GlobalKey<NavigatorState>();
   late final GoRouter _router = createRouter(_rootKey);
+  SyncService? _syncService;
 
   @override
   void initState() {
     super.initState();
+    if (!isSupabaseInitialized()) {
+      return;
+    }
+
+    _syncService = SyncService();
     // Listen to auth state changes and start/stop sync service
     Supabase.instance.client.auth.onAuthStateChange.listen((event) async {
       if (event.event == AuthChangeEvent.passwordRecovery) {
@@ -146,22 +151,22 @@ class _MyAppState extends State<MyApp> {
         }
 
         // Start sync service
-        syncService.start();
+        _syncService?.start();
         // Initial pull from server
-        syncService.syncNow().catchError((e, stackTrace) {
+        _syncService?.syncNow().catchError((e, stackTrace) {
           AppLogger.e('Initial sync error: $e', e, stackTrace);
         });
       } else {
         // User logged out - stop sync service
-        syncService.dispose();
+        _syncService?.dispose();
       }
     });
 
     // Check if user is already logged in
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser != null) {
-      syncService.start();
-      syncService.syncNow().catchError((e, stackTrace) {
+      _syncService?.start();
+      _syncService?.syncNow().catchError((e, stackTrace) {
         AppLogger.e('Initial sync error: $e', e, stackTrace);
       });
     }
@@ -202,7 +207,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
-    syncService.dispose();
+    _syncService?.dispose();
     super.dispose();
   }
 }

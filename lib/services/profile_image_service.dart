@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart' as path;
 import '../utils/logger.dart';
+import '../utils/supabase_guard.dart';
 
 /// Service for managing profile images with Supabase Storage
 class ProfileImageService {
@@ -10,17 +11,24 @@ class ProfileImageService {
   factory ProfileImageService() => _instance;
   ProfileImageService._internal();
 
-  final SupabaseClient _supabase = Supabase.instance.client;
   static const String _bucketName = 'profile-images';
   static const String _storageFolder = 'profiles';
+
+  SupabaseClient? get _supabase {
+    if (!isSupabaseInitialized()) return null;
+    return Supabase.instance.client;
+  }
 
   /// Upload profile image to Supabase Storage
   /// Returns the public URL of the uploaded image, or null if upload fails
   Future<String?> uploadProfileImage(File imageFile, String userId) async {
     try {
+      final supabase = _supabase;
+      if (supabase == null) return null;
+
       // Check if bucket exists by trying to list it first
       try {
-        await _supabase.storage.from(_bucketName).list();
+        await supabase.storage.from(_bucketName).list();
       } catch (e) {
         // Bucket doesn't exist - log warning and return null
         AppLogger.w('Storage bucket "$_bucketName" not found. Please create it in Supabase Dashboard. Profile image will be saved locally only.');
@@ -35,7 +43,7 @@ class ProfileImageService {
       final Uint8List fileBytes = await imageFile.readAsBytes();
 
       // Upload to Supabase Storage
-      await _supabase.storage
+      await supabase.storage
           .from(_bucketName)
           .uploadBinary(
             filePath,
@@ -47,7 +55,7 @@ class ProfileImageService {
           );
 
       // Get public URL
-      final String imageUrl = _supabase.storage
+      final String imageUrl = supabase.storage
           .from(_bucketName)
           .getPublicUrl(filePath);
 
@@ -63,11 +71,14 @@ class ProfileImageService {
   /// Delete profile image from Supabase Storage
   Future<void> deleteProfileImage(String imageUrl) async {
     try {
+      final supabase = _supabase;
+      if (supabase == null) return;
+
       if (imageUrl.isEmpty) return;
 
       // Check if bucket exists
       try {
-        await _supabase.storage.from(_bucketName).list();
+        await supabase.storage.from(_bucketName).list();
       } catch (e) {
         // Bucket doesn't exist - nothing to delete
         AppLogger.w('Storage bucket "$_bucketName" not found. Cannot delete image.');
@@ -81,7 +92,7 @@ class ProfileImageService {
         return;
       }
 
-      await _supabase.storage
+      await supabase.storage
           .from(_bucketName)
           .remove([filePath]);
 
@@ -118,7 +129,10 @@ class ProfileImageService {
   /// Update profile image URL in user metadata
   Future<void> updateProfileImageUrl(String imageUrl) async {
     try {
-      await _supabase.auth.updateUser(
+      final supabase = _supabase;
+      if (supabase == null) return;
+
+      await supabase.auth.updateUser(
         UserAttributes(
           data: {
             'profile_image_url': imageUrl,
@@ -135,7 +149,10 @@ class ProfileImageService {
   /// Clear profile image URL from user metadata
   Future<void> clearProfileImageUrl() async {
     try {
-      await _supabase.auth.updateUser(
+      final supabase = _supabase;
+      if (supabase == null) return;
+
+      await supabase.auth.updateUser(
         UserAttributes(
           data: {
             'profile_image_url': null,

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app_router.dart';
 import '../utils/constants.dart';
+import '../utils/supabase_guard.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -61,7 +62,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     if (!mounted) return;
     
     // Check authentication status
-    final bool isAuthenticated = Supabase.instance.client.auth.currentUser != null;
+    final bool isAuthenticated =
+        isSupabaseInitialized() &&
+        Supabase.instance.client.auth.currentUser != null;
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final bool isGuestMode = prefs.getBool('isGuestMode') ?? false;
     

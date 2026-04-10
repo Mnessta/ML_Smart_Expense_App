@@ -1,5 +1,4 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 
 /// Service to manage user context and data isolation
@@ -13,10 +12,7 @@ class UserContextService {
   /// For logged-in users, returns Supabase user ID
   /// For guest mode, returns null
   String? getCurrentUserId() {
-    if (AuthService().isLoggedIn) {
-      return Supabase.instance.client.auth.currentUser?.id;
-    }
-    return null; // Guest mode
+    return AuthService().currentUserId;
   }
 
   /// Check if currently in guest mode

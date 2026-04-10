@@ -27,10 +27,17 @@ class LocalNotificationService {
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
+    const WindowsInitializationSettings windowsSettings =
+        WindowsInitializationSettings(
+          appName: 'ML Smart Expense',
+          appUserModelId: 'com.mlsmartexpense.app',
+          guid: '6c6a39f8-8fbb-4e4c-98f0-7e5bb4f55aa7',
+        );
 
     final InitializationSettings settings = const InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
+      windows: windowsSettings,
     );
 
     try {

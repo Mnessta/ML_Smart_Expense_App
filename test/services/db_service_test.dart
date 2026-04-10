@@ -1,8 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ml_smart_expense_track/services/db_service.dart';
 import 'package:ml_smart_expense_track/models/expense_model.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
+  setUpAll(() {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  });
+
   group('DbService', () {
     late DbService dbService;
 
@@ -19,7 +25,7 @@ void main() {
         type: TransactionType.expense,
       );
 
-      await dbService.upsertExpense(expense);
+      await dbService.upsertExpense(expense, userId: 'test_user');
       final ExpenseModel? retrieved = await dbService.getExpenseById(expense.id);
 
       expect(retrieved, isNotNull);
@@ -36,12 +42,13 @@ void main() {
         type: TransactionType.expense,
       );
 
-      await dbService.upsertExpense(expense);
+      await dbService.upsertExpense(expense, userId: 'test_user');
       await dbService.deleteExpense(expense.id);
       final ExpenseModel? retrieved = await dbService.getExpenseById(expense.id);
 
       expect(retrieved, isNull);
     });
+
   });
 }
 

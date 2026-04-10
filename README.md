@@ -117,6 +117,13 @@ flutter build apk
 flutter build ios
 ```
 
+### Windows preflight + run
+If Windows desktop builds fail due to local toolchain drift (NuGet, ATL/MFC headers, locked plugin DLLs), run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\preflight_windows_run.ps1
+```
+
 ## Contributing
 
 1. Fork the repository

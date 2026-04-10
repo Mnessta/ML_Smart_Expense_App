@@ -4,13 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../utils/logger.dart';
 import '../services/db_service.dart';
+import '../utils/supabase_guard.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
 
-  final SupabaseClient _supabase = Supabase.instance.client;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
     aOptions: AndroidOptions(),
     iOptions: IOSOptions(
@@ -18,13 +18,26 @@ class AuthService {
     ),
   );
 
-  bool get isInitialized => true;
+  SupabaseClient? get _supabaseOrNull {
+    if (!isSupabaseInitialized()) return null;
+    return Supabase.instance.client;
+  }
+
+  SupabaseClient get _supabase {
+    final client = _supabaseOrNull;
+    if (client == null) {
+      throw Exception('Supabase is not configured. Please update your .env file.');
+    }
+    return client;
+  }
+
+  bool get isInitialized => _supabaseOrNull != null;
   
   Stream<AuthState> get authChanges => _supabase.auth.onAuthStateChange;
   
-  String? get currentUserId => _supabase.auth.currentUser?.id;
+  String? get currentUserId => _supabaseOrNull?.auth.currentUser?.id;
   
-  User? get currentUser => _supabase.auth.currentUser;
+  User? get currentUser => _supabaseOrNull?.auth.currentUser;
 
   Future<void> signInWithEmail(String email, String password) async {
     final response = await _supabase.auth.signInWithPassword(
@@ -160,7 +173,7 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    await _supabase.auth.signOut();
+    await _supabaseOrNull?.auth.signOut();
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('userName');
     // Keep saved_email for auto-fill on next login (password is never stored)
@@ -174,16 +187,16 @@ class AuthService {
   }
   
   String? getCurrentUserName() {
-    final user = _supabase.auth.currentUser;
+    final user = _supabaseOrNull?.auth.currentUser;
     return user?.userMetadata?['name'] as String? ?? 
            user?.email?.split('@')[0];
   }
   
   String? getCurrentUserEmail() {
-    return _supabase.auth.currentUser?.email;
+    return _supabaseOrNull?.auth.currentUser?.email;
   }
   
-  bool get isLoggedIn => _supabase.auth.currentUser != null;
+  bool get isLoggedIn => _supabaseOrNull?.auth.currentUser != null;
   
   /// Update user profile (name and email)
   Future<void> updateProfile({
@@ -336,7 +349,7 @@ class AuthService {
   Future<void> clearCachedSessions() async {
     try {
       // Sign out from Supabase (clears Supabase session)
-      await _supabase.auth.signOut();
+      await _supabaseOrNull?.auth.signOut();
       
       // Clear all SharedPreferences session data
       final SharedPreferences prefs = await SharedPreferences.getInstance();
