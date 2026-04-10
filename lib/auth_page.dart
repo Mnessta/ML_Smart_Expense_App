@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'app_router.dart';
@@ -94,11 +93,8 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
         // Wait a bit for Supabase session to restore
         await Future.delayed(const Duration(milliseconds: 300));
 
-        // Check if user is marked as logged in or has an active Supabase session
-        final session = Supabase.instance.client.auth.currentSession;
-        final user = Supabase.instance.client.auth.currentUser;
-
-        if ((isLoggedIn || session != null || user != null) && mounted) {
+        // Check if user is marked as logged in or has an active auth state
+        if ((isLoggedIn || AuthService().isLoggedIn) && mounted) {
           // User has an active session - auto-fill password with masked dots
           setState(() {
             _passCtrl.text = '••••••••'; // Fake masked password

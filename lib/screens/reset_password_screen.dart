@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../app_router.dart';
 import '../services/auth_service.dart';
+import '../utils/supabase_guard.dart';
 import '../utils/validators.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -32,21 +32,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   Future<void> _initializeSession() async {
-    // Supabase automatically handles recovery sessions from URL hash
-    // Check if there's already a recovery session
-    final session = Supabase.instance.client.auth.currentSession;
-    if (session != null) {
-      final user = Supabase.instance.client.auth.currentUser;
-      setState(() {
-        _userEmail = user?.email ?? widget.email;
-        _sessionInitialized = true;
-      });
-    } else {
+    if (!isSupabaseInitialized()) {
       setState(() {
         _userEmail = widget.email;
         _sessionInitialized = true;
       });
+      return;
     }
+
+    // Supabase automatically handles recovery sessions from URL hash
+    final user = AuthService().currentUser;
+    setState(() {
+      _userEmail = user?.email ?? widget.email;
+      _sessionInitialized = true;
+    });
   }
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();

@@ -147,6 +147,11 @@ class AuthService {
   }
 
   Future<void> sendPasswordReset(String email) async {
+    if (!isInitialized) {
+      throw Exception(
+        'Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in .env first.',
+      );
+    }
     await _supabase.auth.resetPasswordForEmail(
       email,
       redirectTo: 'mlsmartexpense://reset-password',
@@ -156,6 +161,11 @@ class AuthService {
   /// Update password from password reset token
   /// This is called when user clicks the reset link from email
   Future<void> updatePasswordFromReset(String newPassword) async {
+    if (!isInitialized) {
+      throw Exception(
+        'Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in .env first.',
+      );
+    }
     final UserAttributes attributes = UserAttributes(password: newPassword);
     await _supabase.auth.updateUser(attributes);
   }

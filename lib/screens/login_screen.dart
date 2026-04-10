@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 import '../app_router.dart';
 import '../utils/constants.dart';
@@ -154,8 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isPasswordAutoFilled && password.contains('•')) {
       // User has active session - try to use it directly
       try {
-        final session = Supabase.instance.client.auth.currentSession;
-        if (session != null) {
+        if (AuthService().isLoggedIn) {
           // Session exists, user is already logged in - just navigate
           if (!context.mounted) return;
           context.go(AppRoutes.home);
