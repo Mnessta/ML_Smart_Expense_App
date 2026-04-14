@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../utils/logger.dart';
@@ -51,6 +52,10 @@ class LocalNotificationService {
   }
 
   Future<void> _ensurePermissions() async {
+    if (kIsWeb) {
+      return;
+    }
+
     if (Platform.isAndroid) {
       final AndroidFlutterLocalNotificationsPlugin? androidImpl =
           _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();

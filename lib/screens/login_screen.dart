@@ -274,16 +274,20 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     
     try {
-      await AuthService().sendPasswordReset(email);
+      await AuthService().requestPasswordResetOtp(email);
       if (!mounted) return;
       
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Password reset link has been sent to your email. Please check your inbox and click the link to reset your password.',
+            'A 6-digit reset code has been sent to $email. Enter it on the next screen.',
           ),
           duration: Duration(seconds: 5),
         ),
+      );
+
+      context.go(
+        '${AppRoutes.resetPassword}?email=${Uri.encodeComponent(email)}&mode=otp',
       );
       
       // Hide the forgot password link after sending
@@ -295,13 +299,13 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       
-      String errorMessage = 'Failed to send reset link';
+      String errorMessage = 'Failed to send reset code';
       if (e.toString().contains('user-not-found')) {
         errorMessage = 'No account found with this email address.';
       } else if (e.toString().contains('invalid-email')) {
         errorMessage = 'Please enter a valid email address.';
       } else {
-        errorMessage = 'Failed to send reset link: ${e.toString()}';
+        errorMessage = 'Failed to send reset code: ${e.toString()}';
       }
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -420,7 +424,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       return AlertDialog(
                         title: const Text('Reset Password'),
                         content: Text(
-                          'We will send a password reset link to:\n\n$email\n\nDo you want to continue?',
+                          'We will send a 6-digit reset code to:\n\n$email\n\nDo you want to continue?',
                         ),
                         actions: [
                           TextButton(
@@ -429,7 +433,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(true),
-                            child: const Text('Send Reset Link'),
+                            child: const Text('Send Code'),
                           ),
                         ],
                       );
@@ -494,7 +498,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
                               child: Text(
-                                'Reset password via email',
+                                'Reset password via OTP',
                                 style: TextStyle(
                                   color: Colors.orange.shade700,
                                   fontSize: 13,

@@ -211,15 +211,18 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
 
     setState(() => _loading = true);
     try {
-      await AuthService().sendPasswordReset(email);
+      await AuthService().requestPasswordResetOtp(email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Password reset link sent to $email. Open the email and use the link to set a new password.',
+            'A 6-digit reset code was sent to $email.',
           ),
           duration: const Duration(seconds: 5),
         ),
+      );
+      context.go(
+        '${AppRoutes.resetPassword}?email=${Uri.encodeComponent(email)}&mode=otp',
       );
     } catch (e) {
       if (!mounted) return;
@@ -637,8 +640,8 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                             title: const Text('Reset Password'),
                             content: Text(
                               email.isEmpty
-                                  ? 'Enter your registered email, then tap Forgot Password again to receive a reset link.'
-                                  : 'Send a password reset link to:\n\n$email',
+                                  ? 'Enter your registered email, then tap Forgot Password again to receive a 6-digit reset code.'
+                                  : 'Send a 6-digit password reset code to:\n\n$email',
                             ),
                             actions: [
                               TextButton(
@@ -647,7 +650,7 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                               ),
                               TextButton(
                                 onPressed: () => Navigator.of(context).pop(true),
-                                child: const Text('Send Link'),
+                                child: const Text('Send Code'),
                               ),
                             ],
                           );

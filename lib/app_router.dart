@@ -17,11 +17,43 @@ class AppRoutes {
   static const String resetPassword = '/reset-password';
 }
 
+Map<String, String> _parseFragmentParams(Uri uri) {
+  if (uri.fragment.isEmpty) return <String, String>{};
+  return Uri.splitQueryString(uri.fragment);
+}
+
 GoRouter createRouter(GlobalKey<NavigatorState> key) {
   return GoRouter(
     navigatorKey: key,
     initialLocation: AppRoutes.splash,
     redirect: (BuildContext context, GoRouterState state) async {
+      final Map<String, String> fragmentParams = _parseFragmentParams(state.uri);
+      final bool isRecoveryLink =
+          state.uri.queryParameters['type'] == 'recovery' ||
+          fragmentParams['type'] == 'recovery';
+
+      if (isRecoveryLink && state.matchedLocation != AppRoutes.resetPassword) {
+        final String? accessToken =
+            state.uri.queryParameters['access_token'] ?? fragmentParams['access_token'];
+        final String? refreshToken =
+            state.uri.queryParameters['refresh_token'] ?? fragmentParams['refresh_token'];
+        final String? email =
+            state.uri.queryParameters['email'] ?? fragmentParams['email'];
+
+        final Uri resetUri = Uri(
+          path: AppRoutes.resetPassword,
+          queryParameters: <String, String>{
+            ...?(accessToken == null ? null : <String, String>{'access_token': accessToken}),
+            ...?(refreshToken == null
+                ? null
+                : <String, String>{'refresh_token': refreshToken}),
+            ...?(email == null ? null : <String, String>{'email': email}),
+            'type': 'recovery',
+          },
+        );
+        return resetUri.toString();
+      }
+
       final bool isAuthenticated =
           isSupabaseInitialized() &&
           Supabase.instance.client.auth.currentUser != null;
@@ -149,13 +181,14 @@ GoRouter createRouter(GlobalKey<NavigatorState> key) {
       GoRoute(
         path: AppRoutes.resetPassword,
         pageBuilder: (BuildContext context, GoRouterState state) {
+          final Map<String, String> fragmentParams = _parseFragmentParams(state.uri);
           // Extract tokens and email from query parameters
-          final accessToken = state.uri.queryParameters['access_token'];
-          final refreshToken = state.uri.queryParameters['refresh_token'];
-          final email = state.uri.queryParameters['email'] ?? 
-                       (state.uri.queryParameters['type'] == 'recovery' 
-                       ? state.uri.queryParameters['email'] 
-                       : null);
+          final accessToken =
+              state.uri.queryParameters['access_token'] ?? fragmentParams['access_token'];
+          final refreshToken =
+              state.uri.queryParameters['refresh_token'] ?? fragmentParams['refresh_token'];
+          final email = state.uri.queryParameters['email'] ?? fragmentParams['email'];
+          final mode = state.uri.queryParameters['mode'] ?? fragmentParams['mode'];
           
           return CustomTransitionPage(
             key: state.pageKey,
@@ -163,6 +196,7 @@ GoRouter createRouter(GlobalKey<NavigatorState> key) {
               accessToken: accessToken,
               refreshToken: refreshToken,
               email: email,
+              mode: mode,
             ),
             transitionsBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
               return FadeTransition(opacity: animation, child: child);

@@ -9,12 +9,14 @@ class ResetPasswordScreen extends StatefulWidget {
   final String? accessToken;
   final String? refreshToken;
   final String? email;
+  final String? mode;
 
   const ResetPasswordScreen({
     super.key,
     this.accessToken,
     this.refreshToken,
     this.email,
+    this.mode,
   });
 
   @override
@@ -24,17 +26,21 @@ class ResetPasswordScreen extends StatefulWidget {
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool _sessionInitialized = false;
   String? _userEmail;
+  bool _otpVerified = false;
+  bool _isOtpFlow = false;
 
   @override
   void initState() {
     super.initState();
+    _emailController.text = widget.email ?? '';
     _initializeSession();
   }
 
   Future<void> _initializeSession() async {
+    _isOtpFlow = widget.mode == 'otp';
     if (!isSupabaseInitialized()) {
       setState(() {
-        _userEmail = widget.email;
+        _userEmail = widget.email ?? _emailController.text.trim();
         _sessionInitialized = true;
       });
       return;
@@ -42,11 +48,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
     // Supabase automatically handles recovery sessions from URL hash
     final user = AuthService().currentUser;
+    if (!_isOtpFlow && user == null && widget.accessToken == null && widget.refreshToken == null) {
+      _isOtpFlow = true;
+    }
     setState(() {
-      _userEmail = user?.email ?? widget.email;
+      _userEmail = user?.email ?? widget.email ?? _emailController.text.trim();
       _sessionInitialized = true;
     });
   }
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -56,9 +67,78 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   @override
   void dispose() {
+    _emailController.dispose();
+    _otpController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _requestOtp() async {
+    final String email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your email first.')),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      await AuthService().requestPasswordResetOtp(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('A 6-digit reset code was sent to $email.'),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not send OTP: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    final String email = _emailController.text.trim();
+    final String otp = _otpController.text.trim();
+    if (email.isEmpty || otp.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your email and 6-digit OTP.')),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final bool verified = await AuthService().verifyPasswordResetOtp(
+        email: email,
+        otp: otp,
+      );
+      if (!mounted) return;
+      if (!verified) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid or expired OTP.')),
+        );
+        return;
+      }
+      setState(() {
+        _otpVerified = true;
+        _userEmail = email;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('OTP verified. You can set a new password.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('OTP verification failed: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _resetPassword() async {
@@ -81,8 +161,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Update password using Supabase
-      await AuthService().updatePasswordFromReset(newPassword);
+      if (_isOtpFlow) {
+        await AuthService().resetPasswordWithOtp(
+          email: _emailController.text.trim(),
+          otp: _otpController.text.trim(),
+          newPassword: newPassword,
+        );
+      } else {
+        // Link/recovery session flow
+        await AuthService().updatePasswordFromReset(newPassword);
+      }
 
       if (!mounted) return;
 
@@ -162,7 +250,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Create New Password',
+                  _isOtpFlow && !_otpVerified ? 'Verify Reset Code' : 'Create New Password',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -170,17 +258,63 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _userEmail != null
-                      ? 'Enter a new password for $_userEmail'
-                      : widget.email != null
-                          ? 'Enter a new password for ${widget.email}'
-                          : 'Enter your new password below',
+                  _isOtpFlow && !_otpVerified
+                      ? 'Enter your email and 6-digit code to continue.'
+                      : _userEmail != null
+                          ? 'Enter a new password for $_userEmail'
+                          : widget.email != null
+                              ? 'Enter a new password for ${widget.email}'
+                              : 'Enter your new password below',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.grey[600],
                       ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
+                if (_isOtpFlow && !_otpVerified) ...[
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      hintText: 'name@example.com',
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                    enabled: !_isLoading,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _otpController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    decoration: const InputDecoration(
+                      labelText: '6-digit OTP',
+                      hintText: '123456',
+                      prefixIcon: Icon(Icons.pin_outlined),
+                      counterText: '',
+                    ),
+                    enabled: !_isLoading,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _isLoading ? null : _requestOtp,
+                          child: const Text('Send OTP'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _verifyOtp,
+                          child: const Text('Verify OTP'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (!_isOtpFlow || _otpVerified) ...[
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -258,6 +392,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           ),
                         ),
                 ),
+                ],
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: _isLoading

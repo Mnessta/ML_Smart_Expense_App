@@ -146,16 +146,88 @@ class AuthService {
     }
   }
 
+  /// Password reset uses a 6-digit OTP (see [requestPasswordResetOtp]).
+  /// This no longer calls Supabase Auth's link-based recovery email.
   Future<void> sendPasswordReset(String email) async {
+    await requestPasswordResetOtp(email);
+  }
+
+  /// Request a 6-digit OTP for password reset.
+  /// Backend should handle OTP generation, hashing, expiry, and email delivery.
+  Future<void> requestPasswordResetOtp(String email) async {
     if (!isInitialized) {
       throw Exception(
         'Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in .env first.',
       );
     }
-    await _supabase.auth.resetPasswordForEmail(
-      email,
-      redirectTo: 'mlsmartexpense://reset-password',
+
+    final dynamic response = await _supabase.rpc(
+      'request_password_reset_otp',
+      params: <String, dynamic>{'p_email': email},
     );
+
+    if (response is Map && response['success'] == false) {
+      throw Exception(response['message']?.toString() ?? 'Failed to send OTP.');
+    }
+  }
+
+  /// Verify password-reset OTP. Returns true when backend accepts the code.
+  Future<bool> verifyPasswordResetOtp({
+    required String email,
+    required String otp,
+  }) async {
+    if (!isInitialized) {
+      throw Exception(
+        'Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in .env first.',
+      );
+    }
+
+    final dynamic response = await _supabase.rpc(
+      'verify_password_reset_otp',
+      params: <String, dynamic>{
+        'p_email': email,
+        'p_otp': otp,
+      },
+    );
+
+    if (response is bool) return response;
+    if (response is Map) {
+      if (response['success'] == false) {
+        throw Exception(response['message']?.toString() ?? 'Invalid OTP.');
+      }
+      final dynamic verified = response['verified'];
+      if (verified is bool) return verified;
+      return true;
+    }
+    return response != null;
+  }
+
+  /// Reset password using verified OTP.
+  Future<void> resetPasswordWithOtp({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    if (!isInitialized) {
+      throw Exception(
+        'Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in .env first.',
+      );
+    }
+
+    final dynamic response = await _supabase.rpc(
+      'reset_password_with_otp',
+      params: <String, dynamic>{
+        'p_email': email,
+        'p_otp': otp,
+        'p_new_password': newPassword,
+      },
+    );
+
+    if (response is Map && response['success'] == false) {
+      throw Exception(
+        response['message']?.toString() ?? 'Failed to reset password.',
+      );
+    }
   }
 
   /// Update password from password reset token

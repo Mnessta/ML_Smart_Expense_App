@@ -120,6 +120,24 @@ Run your app and:
 2. Add an expense
 3. Check Supabase dashboard → **Table Editor** → **expenses** to see your data
 
+## Password reset OTP email (optional)
+
+The app can email a 6-digit reset code using a Supabase Edge Function and Resend.
+
+1. Run `supabase_schema.sql` (includes `password_resets` and RPCs).
+2. Enable the **pg_net** extension (Dashboard → **Database** → **Extensions**).
+3. Deploy the function and set secrets: see `supabase/functions/send-password-reset-otp/README.md`.
+4. In the SQL Editor, store the function URL and shared secret in Vault (same secret as `INTERNAL_OTP_MAIL_SECRET`):
+
+   ```sql
+   select vault.create_secret('https://YOUR_REF.supabase.co/functions/v1/send-password-reset-otp', 'otp_mail_edge_url');
+   select vault.create_secret('your-long-random-string', 'otp_mail_internal_secret');
+   ```
+
+5. Re-run the `create or replace function public.request_password_reset_otp` block from `supabase_schema.sql` if you already applied an older version without email.
+
+**If the email still shows a reset link:** `otp_mail_edge_url` must be **`https://YOUR_REF.supabase.co/functions/v1/send-password-reset-otp`**, not any `/auth/v1/` URL. The latter triggers Supabase’s built-in link email.
+
 ## Troubleshooting
 
 ### "Invalid API key" error
