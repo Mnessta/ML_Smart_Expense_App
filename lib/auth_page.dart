@@ -27,6 +27,8 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
   final bool _isLogin = true;
 
   bool _loading = false;
+  bool _isPasswordAutoFilled = false;
+  final FocusNode _passwordFocusNode = FocusNode();
 
   bool _obscurePassword = true;
 
@@ -71,6 +73,16 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
       });
     });
 
+    _passwordFocusNode.addListener(() {
+      if (_passwordFocusNode.hasFocus && _isPasswordAutoFilled) {
+        setState(() {
+          _isPasswordAutoFilled = false;
+          _passCtrl.clear();
+          _obscurePassword = true;
+        });
+      }
+    });
+
     // Load saved credentials for auto-fill
     _loadSavedCredentials();
   }
@@ -100,6 +112,7 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
             _passCtrl.text = '••••••••'; // Fake masked password
             _password = '••••••••';
             _obscurePassword = true;
+            _isPasswordAutoFilled = true;
           });
         }
       }
@@ -112,6 +125,7 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
   void dispose() {
     _entryController.dispose();
     _buttonPulseController.dispose();
+    _passwordFocusNode.dispose();
 
     _emailCtrl.dispose();
 
@@ -130,6 +144,28 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
     try {
       final String email = _emailCtrl.text.trim();
       final String password = _passCtrl.text.trim();
+
+      if (_isPasswordAutoFilled && password == '••••••••') {
+        if (AuthService().isLoggedIn) {
+          if (!mounted) return;
+          setState(() => _loading = false);
+          context.go(AppRoutes.home);
+          return;
+        }
+
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _isPasswordAutoFilled = false;
+          _passCtrl.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session expired. Please enter your password.'),
+          ),
+        );
+        return;
+      }
 
       if (_isLogin) {
         // Login existing user
@@ -215,9 +251,7 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'A 6-digit reset code was sent to $email.',
-          ),
+          content: Text('A 6-digit reset code was sent to $email.'),
           duration: const Duration(seconds: 5),
         ),
       );
@@ -512,6 +546,7 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
             const SizedBox(height: 12),
 
             TextFormField(
+              focusNode: _passwordFocusNode,
               controller: _passCtrl,
 
               decoration: InputDecoration(
@@ -645,11 +680,13 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                             ),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.of(context).pop(false),
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
                                 child: const Text('Cancel'),
                               ),
                               TextButton(
-                                onPressed: () => Navigator.of(context).pop(true),
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
                                 child: const Text('Send Code'),
                               ),
                             ],

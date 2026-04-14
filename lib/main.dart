@@ -83,7 +83,8 @@ class _MyAppState extends State<MyApp> {
     // Listen to auth state changes and start/stop sync service
     Supabase.instance.client.auth.onAuthStateChange.listen((event) async {
       if (event.event == AuthChangeEvent.passwordRecovery) {
-        _router.go(AppRoutes.resetPassword);
+        // Recovery link routing is already handled by GoRouter redirection.
+        // Avoid an extra navigation that would strip query/fragment parameters.
         return;
       }
 
