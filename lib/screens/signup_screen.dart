@@ -78,7 +78,7 @@ class _SignupScreenState extends State<SignupScreen>
       if (name.isNotEmpty) {
         final SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('userName', name);
-        
+
         // Also save to Supabase user metadata if user is logged in
         if (AuthService().isLoggedIn) {
           try {
@@ -132,10 +132,11 @@ class _SignupScreenState extends State<SignupScreen>
               // Clear profile photo when entering guest mode
               // But preserve Supabase URLs so they can be restored on login
               final String? imagePath = prefs.getString('profileImagePath');
-              
+
               // Only remove if it's a local file (not a Supabase URL)
               if (imagePath != null && imagePath.isNotEmpty) {
-                if (!imagePath.startsWith('http://') && !imagePath.startsWith('https://')) {
+                if (!imagePath.startsWith('http://') &&
+                    !imagePath.startsWith('https://')) {
                   // It's a local file - remove it for guest mode
                   await prefs.remove('profileImagePath');
                   // Also delete the file if it exists
@@ -206,32 +207,32 @@ class _SignupScreenState extends State<SignupScreen>
                 enableRotation: true, // Slow rotation
                 enablePulse: true, // Pulse effect
                 child: Container(
-                width: 130,
-                height: 130,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  // Removed white border - only snake border will be visible
-                  boxShadow: const [
-                    BoxShadow(
-                      blurRadius: 15,
-                      spreadRadius: 2,
-                      color: Colors.black26,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Transform.scale(
-                    scale: 1.3,
-                    child: Image.asset(
-                      'assets/icon/ml251106_141948_0000.png',
-                      fit: BoxFit.contain,
+                  width: 130,
+                  height: 130,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    // Removed white border - only snake border will be visible
+                    boxShadow: const [
+                      BoxShadow(
+                        blurRadius: 15,
+                        spreadRadius: 2,
+                        color: Colors.black26,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Transform.scale(
+                      scale: 1.3,
+                      child: Image.asset(
+                        'assets/icon/ml251106_141948_0000.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 ),
-              ),
               ),
             ),
             const SizedBox(height: 12),
@@ -276,7 +277,7 @@ class _SignupScreenState extends State<SignupScreen>
               'Create Account',
               style: TextStyle(
                 fontFamily: 'Times New Roman',
-                fontSize: 22, 
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
@@ -286,7 +287,7 @@ class _SignupScreenState extends State<SignupScreen>
               'Sign up to track expenses',
               style: TextStyle(
                 fontFamily: 'Times New Roman',
-                fontSize: 13, 
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
@@ -375,7 +376,7 @@ class _SignupScreenState extends State<SignupScreen>
               child: const Text("Already have an account? Sign in"),
             ),
             const SizedBox(height: 12),
-            TextButton.icon(
+            OutlinedButton.icon(
               onPressed: _isLoading
                   ? null
                   : () async {
@@ -387,11 +388,14 @@ class _SignupScreenState extends State<SignupScreen>
                       await prefs.remove('authProvider');
                       // Clear profile photo when entering guest mode
                       // But preserve Supabase URLs so they can be restored on login
-                      final String? imagePath = prefs.getString('profileImagePath');
-                      
+                      final String? imagePath = prefs.getString(
+                        'profileImagePath',
+                      );
+
                       // Only remove if it's a local file (not a Supabase URL)
                       if (imagePath != null && imagePath.isNotEmpty) {
-                        if (!imagePath.startsWith('http://') && !imagePath.startsWith('https://')) {
+                        if (!imagePath.startsWith('http://') &&
+                            !imagePath.startsWith('https://')) {
                           // It's a local file - remove it for guest mode
                           await prefs.remove('profileImagePath');
                           // Also delete the file if it exists
@@ -415,6 +419,15 @@ class _SignupScreenState extends State<SignupScreen>
                     },
               icon: const Icon(Icons.person_outline),
               label: const Text('Continue as Guest'),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF0A6BFF), width: 3.0),
+                foregroundColor: const Color(0xFF0A6BFF),
+                backgroundColor: const Color(0x1F0A6BFF),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                minimumSize: const Size(double.infinity, 52),
+              ),
             ),
           ],
         ),
@@ -462,16 +475,16 @@ class _SignupScreenState extends State<SignupScreen>
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not launch URL')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Could not launch URL')));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
       }
     }
   }
@@ -493,7 +506,8 @@ class _SignupScreenState extends State<SignupScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             IconButton(
-              onPressed: () => _launchURL('https://www.instagram.com/your_handle'),
+              onPressed: () =>
+                  _launchURL('https://www.instagram.com/your_handle'),
               icon: const FaIcon(
                 FontAwesomeIcons.instagram,
                 color: Color(0xFFE4405F),

@@ -660,12 +660,13 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
             OutlinedButton(
               onPressed: _loading ? null : () => context.go(AppRoutes.signup),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF0A6BFF), width: 1.5),
+                side: const BorderSide(color: Color(0xFF0A6BFF), width: 3.0),
                 foregroundColor: const Color(0xFF0A6BFF),
+                backgroundColor: const Color(0x1F0A6BFF),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                minimumSize: const Size(double.infinity, 48),
+                minimumSize: const Size(double.infinity, 52),
               ),
               child: const Text("Don't have an account? Sign up"),
             ),
@@ -707,12 +708,13 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                       }
                     },
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF0A6BFF), width: 1.5),
+                side: const BorderSide(color: Color(0xFF0A6BFF), width: 3.0),
                 foregroundColor: const Color(0xFF0A6BFF),
+                backgroundColor: const Color(0x1F0A6BFF),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                minimumSize: const Size(double.infinity, 48),
+                minimumSize: const Size(double.infinity, 52),
               ),
               child: const Text('Forgot Password?'),
             ),
@@ -724,12 +726,13 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
               icon: const Icon(Icons.person_outline),
               label: const Text("Continue as Guest"),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF0A6BFF), width: 1.5),
+                side: const BorderSide(color: Color(0xFF0A6BFF), width: 3.0),
                 foregroundColor: const Color(0xFF0A6BFF),
+                backgroundColor: const Color(0x1F0A6BFF),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                minimumSize: const Size(double.infinity, 48),
+                minimumSize: const Size(double.infinity, 52),
               ),
             ),
           ],
