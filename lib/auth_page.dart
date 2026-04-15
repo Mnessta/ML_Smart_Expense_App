@@ -657,12 +657,10 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
 
             const SizedBox(height: 12),
 
-            OutlinedButton(
+            TextButton(
               onPressed: _loading ? null : () => context.go(AppRoutes.signup),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF0A6BFF), width: 3.0),
+              style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF0A6BFF),
-                backgroundColor: const Color(0x1F0A6BFF),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -673,7 +671,7 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
 
             const SizedBox(height: 12),
 
-            OutlinedButton(
+            TextButton(
               onPressed: _loading
                   ? null
                   : () async {
@@ -707,10 +705,8 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                         await _sendPasswordReset();
                       }
                     },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF0A6BFF), width: 3.0),
+              style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF0A6BFF),
-                backgroundColor: const Color(0x1F0A6BFF),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -721,14 +717,12 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
 
             const SizedBox(height: 12),
 
-            OutlinedButton.icon(
+            TextButton.icon(
               onPressed: _continueAsGuest,
               icon: const Icon(Icons.person_outline),
               label: const Text("Continue as Guest"),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF0A6BFF), width: 3.0),
+              style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF0A6BFF),
-                backgroundColor: const Color(0x1F0A6BFF),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

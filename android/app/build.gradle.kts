@@ -1,8 +1,7 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android") // ✅ use the correct Kotlin plugin ID
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
-    // Google Services plugin removed - using Supabase instead of Firebase
 }
 
 android {
@@ -11,13 +10,15 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+
+        // ✅ REQUIRED for flutter_local_notifications
         isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = "17"
     }
 
     defaultConfig {
@@ -38,8 +39,8 @@ android {
 flutter {
     source = "../.."
 }
-dependencies {
-    // Firebase dependencies removed - using Supabase for authentication and data storage
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
-}
 
+dependencies {
+    // Required for flutter_local_notifications + Java 8+ APIs
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
