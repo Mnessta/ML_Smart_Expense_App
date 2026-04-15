@@ -95,66 +95,38 @@ begin
     where ds.name = 'otp_mail_internal_secret'
     limit 1;
 
-    if v_edge_url is not null
-       and length(btrim(v_edge_url)) > 0
-       and v_internal_secret is not null
-       and length(btrim(v_internal_secret)) > 0 then
-      if position('/auth/v1/' in lower(btrim(v_edge_url))) > 0 then
-        raise exception
-          'otp_mail_edge_url must be your Edge Function (.../functions/v1/send-password-reset-otp), not an Auth API URL.';
-      end if;
-      if position('/functions/v1/' in lower(btrim(v_edge_url))) = 0 then
-        raise exception
-          'otp_mail_edge_url must include /functions/v1/ (deploy send-password-reset-otp first).';
-      end if;
-      perform net.http_post(
-        url := btrim(v_edge_url),
-        headers := jsonb_build_object(
-          'Content-Type', 'application/json',
-          'x-internal-secret', btrim(v_internal_secret)
-        ),
-        body := jsonb_build_object(
-          'email', lower(btrim(p_email)),
-          'otp', v_otp
-        )
-      );
-      return jsonb_build_object('success', true, 'message', 'OTP sent.');
+    if v_edge_url is null
+       or length(btrim(v_edge_url)) = 0
+       or v_internal_secret is null
+       or length(btrim(v_internal_secret)) = 0 then
+      raise exception 'OTP email delivery is not configured. Add Vault secrets otp_mail_edge_url + otp_mail_internal_secret and deploy send-password-reset-otp.';
     end if;
+
+    if position('/auth/v1/' in lower(btrim(v_edge_url))) > 0 then
+      raise exception
+        'otp_mail_edge_url must be your Edge Function (.../functions/v1/send-password-reset-otp), not an Auth API URL.';
+    end if;
+    if position('/functions/v1/' in lower(btrim(v_edge_url))) = 0 then
+      raise exception
+        'otp_mail_edge_url must include /functions/v1/ (deploy send-password-reset-otp first).';
+    end if;
+
+    perform net.http_post(
+      url := btrim(v_edge_url),
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'x-internal-secret', btrim(v_internal_secret)
+      ),
+      body := jsonb_build_object(
+        'email', lower(btrim(p_email)),
+        'otp', v_otp
+      )
+    );
+
+    return jsonb_build_object('success', true, 'message', 'OTP sent.');
   exception
     when undefined_table then
-      null;
+      raise exception 'OTP email delivery is not configured: install pg_net and deploy send-password-reset-otp.';
     when undefined_function then
-      null;
+      raise exception 'OTP email delivery is not configured: install pg_net and deploy send-password-reset-otp.';
   end;
-
-  return jsonb_build_object(
-    'success', true,
-    'message',
-    'OTP created. Add Vault secrets otp_mail_edge_url + otp_mail_internal_secret and deploy send-password-reset-otp to receive email.'
-  );
-end;
-`$`$;
-
-grant execute on function public.request_password_reset_otp(text) to anon, authenticated;
-"@
-
-Set-Content -Path $sqlPath -Value $sql -Encoding UTF8
-
-$hints = @"
-# Set these on the Edge Function (Supabase CLI), using the SAME internal secret as in Vault:
-
-supabase secrets set INTERNAL_OTP_MAIL_SECRET=$internalSecret
-supabase secrets set RESEND_API_KEY=re_your_key_here
-supabase secrets set OTP_FROM_EMAIL=`"Your App <noreply@your-domain.com>`"
-
-supabase functions deploy send-password-reset-otp --no-verify-jwt
-
-Generated internal secret (already embedded in otp_mail_setup.sql Vault line):
-$internalSecret
-"@
-
-Set-Content -Path $hintsPath -Value $hints -Encoding UTF8
-
-Write-Host "Wrote $sqlPath"
-Write-Host "Wrote $hintsPath"
-Write-Host "Next: paste otp_mail_setup.sql into Supabase SQL Editor and Run."

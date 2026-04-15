@@ -166,7 +166,7 @@ begin
     false
   );
 
-  -- Optional: deliver OTP by email via Edge Function + Resend (see supabase/functions/send-password-reset-otp).
+  -- Deliver OTP by email via Edge Function + Resend (see supabase/functions/send-password-reset-otp).
   -- 1) Deploy function and set secrets (RESEND_API_KEY, INTERNAL_OTP_MAIL_SECRET, OTP_FROM_EMAIL).
   -- 2) Store matching URL + secret in Vault (SQL Editor), e.g.:
   --    select vault.create_secret('https://YOUR_REF.supabase.co/functions/v1/send-password-reset-otp', 'otp_mail_edge_url');
@@ -183,44 +183,42 @@ begin
     where ds.name = 'otp_mail_internal_secret'
     limit 1;
 
-    if v_edge_url is not null
-       and length(btrim(v_edge_url)) > 0
-       and v_internal_secret is not null
-       and length(btrim(v_internal_secret)) > 0 then
-      -- Wrong URL (e.g. /auth/v1/recover) triggers Supabase's link-based reset email, not our OTP.
-      if position('/auth/v1/' in lower(btrim(v_edge_url))) > 0 then
-        raise exception
-          'otp_mail_edge_url must be your Edge Function (.../functions/v1/send-password-reset-otp), not an Auth API URL.';
-      end if;
-      if position('/functions/v1/' in lower(btrim(v_edge_url))) = 0 then
-        raise exception
-          'otp_mail_edge_url must include /functions/v1/ (deploy send-password-reset-otp first).';
-      end if;
-      perform net.http_post(
-        url := btrim(v_edge_url),
-        headers := jsonb_build_object(
-          'Content-Type', 'application/json',
-          'x-internal-secret', btrim(v_internal_secret)
-        ),
-        body := jsonb_build_object(
-          'email', lower(btrim(p_email)),
-          'otp', v_otp
-        )
-      );
-      return jsonb_build_object('success', true, 'message', 'OTP sent.');
+    if v_edge_url is null
+       or length(btrim(v_edge_url)) = 0
+       or v_internal_secret is null
+       or length(btrim(v_internal_secret)) = 0 then
+      raise exception 'OTP email delivery is not configured. Add Vault secrets otp_mail_edge_url + otp_mail_internal_secret and deploy send-password-reset-otp.';
     end if;
+
+    -- Wrong URL (e.g. /auth/v1/recover) triggers Supabase Auth's link-based reset email, not our OTP.
+    if position('/auth/v1/' in lower(btrim(v_edge_url))) > 0 then
+      raise exception
+        'otp_mail_edge_url must be your Edge Function (.../functions/v1/send-password-reset-otp), not an Auth API URL.';
+    end if;
+    if position('/functions/v1/' in lower(btrim(v_edge_url))) = 0 then
+      raise exception
+        'otp_mail_edge_url must include /functions/v1/ (deploy send-password-reset-otp first).';
+    end if;
+
+    perform net.http_post(
+      url := btrim(v_edge_url),
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'x-internal-secret', btrim(v_internal_secret)
+      ),
+      body := jsonb_build_object(
+        'email', lower(btrim(p_email)),
+        'otp', v_otp
+      )
+    );
+
+    return jsonb_build_object('success', true, 'message', 'OTP sent.');
   exception
     when undefined_table then
-      null;
+      raise exception 'OTP email delivery is not configured: install pg_net and deploy send-password-reset-otp.';
     when undefined_function then
-      null;
+      raise exception 'OTP email delivery is not configured: install pg_net and deploy send-password-reset-otp.';
   end;
-
-  return jsonb_build_object(
-    'success', true,
-    'message',
-    'OTP created. Add Vault secrets otp_mail_edge_url + otp_mail_internal_secret and deploy send-password-reset-otp to receive email.'
-  );
 end;
 $$;
 
